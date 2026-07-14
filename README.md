@@ -1,10 +1,10 @@
 # 供应商发展 / 帮扶计划技能（supplier-development）
 
-> 主色：#C8102E ｜ 范式：混合式（Markdown + HTML 双版）
+> 范式：交互引导式（纯文字版 .txt + Markdown .md）
 > 面向 SQE 与供应商质量经理的低绩效供应商帮扶提升计划生成工具。
 
 ## 一句话说明
-以"诊断-措施-跟踪-验证"闭环，把低绩效供应商的整改从空话变为可落地、可跟踪、可验证的帮扶计划双版文档。
+以"诊断-措施-跟踪-验证"闭环，把低绩效供应商的整改从空话变为可落地、可跟踪、可验证的帮扶计划文档（txt+md）。
 
 ## 适用角色
 - SQE（供应商质量工程师）
@@ -26,15 +26,15 @@
 ## 文件清单
 - `SKILL.md`：技能主文件
 - `README.md`：本说明
-- `scripts/build_report.py`：帮扶 JSON → MD + HTML 双版生成器
+- `scripts/build_report.py`：帮扶 JSON → 纯文字版 .txt + Markdown .md 生成器
 
 ## 使用方法
 ```bash
-# 内置小样本直接跑通，产出示意双版
+# 内置小样本直接跑通，产出示意 txt+md 双件
 python scripts/build_report.py
 
 # 用自有数据
-python scripts/build_report.py --input dev.json --md-out 供应商帮扶计划.md --html-out 供应商帮扶计划.html
+python scripts/build_report.py --input dev.json --out-dir ./输出
 ```
 
 ## 联动技能

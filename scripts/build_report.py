@@ -2,11 +2,11 @@
 # -*- coding: utf-8 -*-
 """
 供应商帮扶提升计划生成器
-读入结构化帮扶 JSON，生成 Markdown + 网页版 HTML（主色 #C8102E）。
+读入结构化帮扶 JSON，生成纯文字版 (.txt) + Markdown (.md) 双件文档。
 
 用法：
-  python build_report.py --input dev.json --md-out 供应商帮扶计划.md --html-out 供应商帮扶计划.html
-  python build_report.py                                  # 内置小样本，直接产出示意双版
+  python build_report.py --input dev.json --out-dir ./输出
+  python build_report.py                                  # 内置小样本，直接产出示意双件
 
 输入 JSON 结构：
 {
@@ -28,15 +28,9 @@
 
 import argparse
 import json
+import os
 import sys
-import html
 from datetime import datetime
-
-PRIMARY = "#C8102E"
-
-
-def esc(s):
-    return html.escape(str(s), quote=True)
 
 
 def load_dev(path):
@@ -84,67 +78,55 @@ def build_md(d):
     return "\n".join(L)
 
 
-CSS = f"""
-:root{{--primary:{PRIMARY};--bg:#fafafa;--card:#ffffff;--ink:#1f2937;--muted:#6b7280;}}
-*{{box-sizing:border-box;margin:0;padding:0}}
-body{{font-family:-apple-system,"Segoe UI",Roboto,"PingFang SC","Microsoft YaHei",sans-serif;
-  background:var(--bg);color:var(--ink);line-height:1.75;padding:32px}}
-.wrap{{max-width:1000px;margin:0 auto}}
-header{{text-align:center;padding:26px 0 16px;border-bottom:3px solid var(--primary);margin-bottom:26px}}
-header h1{{font-size:27px}}
-header .meta{{color:var(--muted);font-size:14px;margin-top:10px}}
-.sec{{background:var(--card);border-radius:14px;padding:22px 26px;box-shadow:0 4px 16px rgba(0,0,0,.05);margin-bottom:20px}}
-.sec h2{{font-size:20px;margin-bottom:12px;border-left:5px solid var(--primary);padding-left:12px}}
-.sec p{{font-size:15px;margin:6px 0}}
-table{{width:100%;border-collapse:collapse;margin-top:10px;font-size:14px}}
-th,td{{border:1px solid #e5e7eb;padding:9px 12px;text-align:left;vertical-align:top}}
-th{{background:var(--primary);color:#fff}}
-.pend{{background:#fff7f8;border:1px dashed var(--primary);border-radius:12px;padding:16px 22px}}
-.pend h2{{color:var(--primary);border:none;padding:0;margin-bottom:8px}}
-footer{{text-align:center;color:var(--muted);font-size:12px;margin-top:18px}}
-"""
-
-
-def build_html(d):
-    issues_rows = "\n".join(
-        f"<tr><td>{esc(it.get('area',''))}</td><td>{esc(it.get('problem',''))}</td><td>{esc(it.get('evidence',''))}</td></tr>"
-        for it in (d.get("issues", []) or [{"area":"（待企业补充）", "problem": "", "evidence": ""}])
-    )
-    act_rows = "\n".join(
-        f"<tr><td>{esc(a.get('no',''))}</td><td>{esc(a.get('issue',''))}</td><td>{esc(a.get('action',''))}</td>"
-        f"<td>{esc(a.get('owner',''))}</td><td>{esc(a.get('due',''))}</td><td>{esc(a.get('kpi',''))}</td></tr>"
-        for a in (d.get("actions", []) or [])
-    )
-    ms_rows = "\n".join(
-        f"<tr><td>{esc(m.get('phase',''))}</td><td>{esc(m.get('time',''))}</td><td>{esc(m.get('gate',''))}</td></tr>"
-        for m in (d.get("milestones", []) or [])
-    )
+def build_txt(d):
+    sep = "=" * 48
+    sub = "-" * 48
+    L = []
+    L.append(sep)
+    L.append(d.get("plan_title", "供应商帮扶提升计划"))
+    L.append(sep)
+    L.append(f"供应商：{d.get('supplier','')}")
+    L.append(f"当前等级：{d.get('current_level','')}  →  目标等级：{d.get('target_level','')}")
+    L.append(f"生成日期：{datetime.now().strftime('%Y-%m-%d')}")
+    L.append("")
+    L.append("一、背景与诊断")
+    L.append(sub)
+    L.append(d.get("background", "（待企业补充）"))
+    L.append("")
+    L.append("二、问题清单")
+    L.append(sub)
+    for it in d.get("issues", []) or []:
+        L.append(f"问题域：{it.get('area','')}")
+        L.append(f"  表现：{it.get('problem','')}")
+        L.append(f"  证据：{it.get('evidence','')}")
+    if not d.get("issues"):
+        L.append("（待企业补充）")
+    L.append("")
+    L.append("三、提升措施")
+    L.append(sub)
+    for a in d.get("actions", []) or []:
+        L.append(f"{a.get('no','')} 〔对应问题：{a.get('issue','')}〕")
+        L.append(f"  措施：{a.get('action','')}")
+        L.append(f"  责任方：{a.get('owner','')} ｜ 期限：{a.get('due','')} ｜ 衡量KPI：{a.get('kpi','')}")
+    L.append("")
+    L.append("四、里程碑与验证门禁")
+    L.append(sub)
+    for m in d.get("milestones", []) or []:
+        L.append(f"{m.get('phase','')} ｜ 时间：{m.get('time','')} ｜ 验证门禁：{m.get('gate','')}")
+    L.append("")
+    L.append("五、跟踪机制")
+    L.append(sub)
+    L.append(d.get("tracking", "（待企业补充）"))
     pend = d.get("pending", [])
-    pend_html = ""
     if pend:
-        items = "\n".join(f"<li>〔待企业补充〕{esc(x)}</li>" for x in pend)
-        pend_html = f"<div class='pend'><h2>七、待企业补充项</h2><ul>{items}</ul></div>"
-    return f"""<!DOCTYPE html>
-<html lang="zh-CN"><head><meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<title>{esc(d.get('plan_title','供应商帮扶提升计划'))}</title>
-<style>{CSS}</style></head>
-<body><div class="wrap">
-<header>
-  <h1>{esc(d.get('plan_title','供应商帮扶提升计划'))}</h1>
-  <div class="meta">供应商：{esc(d.get('supplier',''))} ｜ {esc(d.get('current_level',''))} → {esc(d.get('target_level',''))} ｜ 生成：{datetime.now().strftime('%Y-%m-%d')}</div>
-</header>
-<section class="sec"><h2>一、背景与诊断</h2><p>{esc(d.get('background','（待企业补充）'))}</p></section>
-<section class="sec"><h2>二、问题清单</h2>
-<table><thead><tr><th>问题域</th><th>表现</th><th>证据</th></tr></thead><tbody>{issues_rows}</tbody></table></section>
-<section class="sec"><h2>三、提升措施</h2>
-<table><thead><tr><th>编号</th><th>对应问题</th><th>措施</th><th>责任方</th><th>期限</th><th>衡量KPI</th></tr></thead><tbody>{act_rows}</tbody></table></section>
-<section class="sec"><h2>四、里程碑与验证门禁</h2>
-<table><thead><tr><th>阶段</th><th>时间</th><th>验证门禁</th></tr></thead><tbody>{ms_rows}</tbody></table></section>
-<section class="sec"><h2>五、跟踪机制</h2><p>{esc(d.get('tracking','（待企业补充）'))}</p></section>
-{pend_html}
-<footer>本报告由供应商发展/帮扶技能生成 · {datetime.now().strftime('%Y-%m-%d %H:%M')}</footer>
-</div></body></html>"""
+        L.append("")
+        L.append("六、待企业补充项")
+        L.append(sub)
+        for x in pend:
+            L.append(f"  - 〔待企业补充〕{x}")
+    L.append("")
+    L.append(f"本报告由供应商发展/帮扶技能生成 · {datetime.now().strftime('%Y-%m-%d %H:%M')}")
+    return "\n".join(L)
 
 
 SAMPLE_DEV = {
@@ -178,10 +160,10 @@ SAMPLE_DEV = {
 
 
 def main():
-    ap = argparse.ArgumentParser(description="供应商帮扶提升计划生成器")
+    ap = argparse.ArgumentParser(description="供应商帮扶提升计划生成器（txt+md）")
     ap.add_argument("--input", help="结构化帮扶 JSON 路径（缺省使用内置小样本）")
-    ap.add_argument("--md-out", default="供应商帮扶计划.md", help="输出 MD 路径")
-    ap.add_argument("--html-out", default="供应商帮扶计划.html", help="输出 HTML 路径")
+    ap.add_argument("--out-dir", default=os.getcwd(), help="输出目录（默认当前工作目录）")
+    ap.add_argument("--format", choices=["txt", "md", "all"], default="all", help="输出格式，默认 all（txt+md）")
     args = ap.parse_args()
 
     try:
@@ -190,13 +172,20 @@ def main():
         sys.stderr.write(f"读取输入失败：{e}\n")
         sys.exit(1)
 
-    with open(args.md_out, "w", encoding="utf-8") as f:
-        f.write(build_md(dev))
-    sys.stderr.write(f"MD 已生成：{args.md_out}\n")
+    os.makedirs(args.out_dir, exist_ok=True)
+    date_tag = datetime.now().strftime("%Y%m%d")
+    base = f"供应商帮扶计划_{date_tag}"
 
-    with open(args.html_out, "w", encoding="utf-8") as f:
-        f.write(build_html(dev))
-    sys.stderr.write(f"HTML 已生成：{args.html_out}\n")
+    if args.format in ("md", "all"):
+        md_path = os.path.join(args.out_dir, base + ".md")
+        with open(md_path, "w", encoding="utf-8") as f:
+            f.write(build_md(dev))
+        sys.stderr.write(f"MD 已生成：{md_path}\n")
+    if args.format in ("txt", "all"):
+        txt_path = os.path.join(args.out_dir, base + ".txt")
+        with open(txt_path, "w", encoding="utf-8") as f:
+            f.write(build_txt(dev))
+        sys.stderr.write(f"TXT 已生成：{txt_path}\n")
 
 
 if __name__ == "__main__":
