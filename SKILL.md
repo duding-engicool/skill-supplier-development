@@ -2,6 +2,8 @@
 name: supplier-development
 description: 面向SQE与供应商质量经理的低绩效供应商帮扶提升计划生成技能；以诊断-措施-跟踪-验证闭环产出可落地的帮扶计划文档（txt+md）。
 version: 1.0.0
+slug: supplier-development
+displayName: 供应商发展帮扶
 ---
 
 # 供应商发展 / 帮扶计划技能
